@@ -1,35 +1,87 @@
-import React from 'react';
-import { Download, FileImage } from 'lucide-react';
+import React, { useEffect, useState } from 'react';
+import { Download, FileImage, ThumbsUp, ArrowLeft } from 'lucide-react';
 
 interface PreviewPanelProps {
   previewImage: string | null;
   zipData: Uint8Array | null;
   onSave: () => Promise<void>;
+  onBack: () => void;
 }
 
-const PreviewPanel: React.FC<PreviewPanelProps> = ({ previewImage, zipData, onSave }) => {
+const PreviewPanel: React.FC<PreviewPanelProps> = ({ previewImage, zipData, onSave, onBack }) => {
+  const [isSaving, setIsSaving] = useState(false);
+  const [showAnimation, setShowAnimation] = useState(false);
+
+  // Animation effect when preview image appears
+  useEffect(() => {
+    if (previewImage) {
+      setShowAnimation(true);
+      const timer = setTimeout(() => setShowAnimation(false), 1500);
+      return () => clearTimeout(timer);
+    }
+  }, [previewImage]);
+
+  const handleSave = async () => {
+    setIsSaving(true);
+    try {
+      await onSave();
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
   return (
-    <div className="preview-panel">
-      <h2 style={{ marginBottom: '1rem' }}>Preview</h2>
+    <div className="preview-container">
+      <div className="preview-header">
+        <button className="back-button" onClick={onBack}>
+          <ArrowLeft className="back-icon" />
+          <span>Back to Editor</span>
+        </button>
+        <h2 className="preview-title">Generated QR Code Preview</h2>
+      </div>
       
-      <div className="preview-container">
+      <div className={`preview-content ${previewImage ? 'has-preview' : 'no-preview'}`}>
         {zipData && previewImage ? (
-          <>
-            <img src={previewImage} alt="QR Code Preview" className="preview-image" />
+          <div className="preview-result">
+            <div className="preview-image-container">
+              <img 
+                src={previewImage} 
+                alt="QR Code with Text Overlay" 
+                className={`preview-image ${showAnimation ? 'animate-show' : ''}`} 
+              />
+              {showAnimation && (
+                <div className="success-overlay">
+                  <ThumbsUp className="success-icon" />
+                </div>
+              )}
+            </div>
+            
             <div className="preview-info">
-              <h3>QR Code Generated</h3>
-              <p>Your QR code has been positioned on the image as specified.</p>
-              <button className="btn btn-success" onClick={onSave}>
-                <Download size={18} />
-                Save ZIP File
+              <h3>QR Code Image Generated</h3>
+              <p>This is an image from your generated ZIP file with QR code and text overlay.</p>
+              <button 
+                className="download-button" 
+                onClick={handleSave}
+                disabled={isSaving}
+              >
+                {isSaving ? (
+                  <span className="loading-text">
+                    <Download className="download-icon spinning" />
+                    Saving...
+                  </span>
+                ) : (
+                  <span className="button-text">
+                    <Download className="download-icon" />
+                    Save ZIP File
+                  </span>
+                )}
               </button>
             </div>
-          </>
+          </div>
         ) : (
-          <div className="preview-placeholder">
-            <FileImage size={48} />
-            <p>Generated QR code preview will appear here after generation</p>
-            <p className="file-drop-hint">Click "Generate QR Codes" to see the preview</p>
+          <div className="placeholder">
+            <FileImage className="placeholder-icon" />
+            <p className="placeholder-text">No preview available</p>
           </div>
         )}
       </div>

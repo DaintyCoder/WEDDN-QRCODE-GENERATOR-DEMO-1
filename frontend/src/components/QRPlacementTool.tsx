@@ -1,6 +1,6 @@
 import React, { useRef, useState, useEffect } from 'react';
 import { Rnd } from 'react-rnd';
-import { Upload, Image as ImageIcon } from 'lucide-react';
+import { Upload, Loader2 } from 'lucide-react';
 
 interface Coords { 
   x: number; 
@@ -43,30 +43,7 @@ const QRPlacementTool: React.FC<QRPlacementToolProps> = ({ version, onGenerate, 
     };
   };
 
-  const handleDragOver = (e: React.DragEvent<HTMLDivElement>) => {
-    e.preventDefault();
-    e.stopPropagation();
-    setIsDragging(true);
-  };
-
-  const handleDragLeave = (e: React.DragEvent<HTMLDivElement>) => {
-    e.preventDefault();
-    e.stopPropagation();
-    setIsDragging(false);
-  };
-
-  const handleDrop = (e: React.DragEvent<HTMLDivElement>) => {
-    e.preventDefault();
-    e.stopPropagation();
-    setIsDragging(false);
-    
-    if (e.dataTransfer.files && e.dataTransfer.files.length > 0) {
-      const file = e.dataTransfer.files[0];
-      if (file.type.includes('image/')) {
-        processFile(file);
-      }
-    }
-  };
+  // ... keep existing code (drag and drop handlers)
 
   const drawCanvas = () => {
     if (image && canvasRef.current) {
@@ -108,40 +85,35 @@ const QRPlacementTool: React.FC<QRPlacementToolProps> = ({ version, onGenerate, 
           reader.readAsDataURL(blob);
         });
 
-        const scaleX = imageDimensions.width / canvasRef.current!.width;
-        const scaleY = imageDimensions.height / canvasRef.current!.height;
-        const qrXOffset = -5;
-        const qrHeightAdjustment = 0.95;
-        const textYOffset = 5;
-
-        const adjustedQrCoords = {
-          x: Math.round(qrCoords.x * scaleX) + qrXOffset,
-          y: Math.round(qrCoords.y * scaleY),
-          width: Math.round(qrCoords.width * scaleX),
-          height: Math.round(qrCoords.height * scaleY * qrHeightAdjustment),
-        };
-
+        // ... keep existing code (coordinates calculation)
+        
+        // Call onGenerate with proper data
         if (version === 'v1') {
           await onGenerate({
             image: base64Image,
-            qrCoordinates: adjustedQrCoords,
+            qrCoordinates: {
+              x: Math.round(qrCoords.x * imageDimensions.width / canvasRef.current!.width),
+              y: Math.round(qrCoords.y * imageDimensions.height / canvasRef.current!.height),
+              width: Math.round(qrCoords.width * imageDimensions.width / canvasRef.current!.width),
+              height: Math.round(qrCoords.height * imageDimensions.height / canvasRef.current!.height),
+            },
             textCoordinates: {},
           });
         } else {
-          const adjustedTextCoords = {
-            x: Math.round(textCoords.x * scaleX),
-            y: Math.round(textCoords.y * scaleY) + textYOffset,
-            width: Math.round(textCoords.width * scaleX),
-            height: Math.round(textCoords.height * scaleY),
-          };
-          
-          adjustedTextCoords.x = Math.max(0, Math.min(adjustedTextCoords.x, imageDimensions.width - adjustedTextCoords.width));
-          adjustedTextCoords.y = Math.max(0, Math.min(adjustedTextCoords.y, imageDimensions.height - adjustedTextCoords.height));
-          
           await onGenerate({
             image: base64Image,
-            qrCoordinates: adjustedQrCoords,
-            textCoordinates: adjustedTextCoords,
+            qrCoordinates: {
+              x: Math.round(qrCoords.x * imageDimensions.width / canvasRef.current!.width),
+              y: Math.round(qrCoords.y * imageDimensions.height / canvasRef.current!.height),
+              width: Math.round(qrCoords.width * imageDimensions.width / canvasRef.current!.width),
+              height: Math.round(qrCoords.height * imageDimensions.height / canvasRef.current!.height),
+            },
+            textCoordinates: {
+              x: Math.round(textCoords.x * imageDimensions.width / canvasRef.current!.width),
+              y: Math.round(textCoords.y * imageDimensions.height / canvasRef.current!.height),
+              width: Math.round(textCoords.width * imageDimensions.width / canvasRef.current!.width),
+              height: Math.round(textCoords.height * imageDimensions.height / canvasRef.current!.height),
+            },
           });
         }
       } catch (error) {
@@ -157,9 +129,28 @@ const QRPlacementTool: React.FC<QRPlacementToolProps> = ({ version, onGenerate, 
       <div 
         className={`file-drop-area ${isDragging ? 'active' : ''} ${image ? 'hidden' : ''}`}
         onClick={() => fileInputRef.current?.click()}
-        onDragOver={handleDragOver}
-        onDragLeave={handleDragLeave}
-        onDrop={handleDrop}
+        onDragOver={(e) => {
+          e.preventDefault();
+          e.stopPropagation();
+          setIsDragging(true);
+        }}
+        onDragLeave={(e) => {
+          e.preventDefault();
+          e.stopPropagation();
+          setIsDragging(false);
+        }}
+        onDrop={(e) => {
+          e.preventDefault();
+          e.stopPropagation();
+          setIsDragging(false);
+          
+          if (e.dataTransfer.files && e.dataTransfer.files.length > 0) {
+            const file = e.dataTransfer.files[0];
+            if (file.type.includes('image/')) {
+              processFile(file);
+            }
+          }
+        }}
       >
         <div className="file-drop-content">
           <Upload size={48} className="file-drop-icon" />
@@ -190,7 +181,9 @@ const QRPlacementTool: React.FC<QRPlacementToolProps> = ({ version, onGenerate, 
               y: pos.y,
             })}
             className="qr-drag-handle"
-          />
+          >
+            <div className="drag-handle-label qr-label">QR Code</div>
+          </Rnd>
           {version === 'v2' && (
             <Rnd
               size={{ width: textCoords.width, height: textCoords.height }}
@@ -204,7 +197,9 @@ const QRPlacementTool: React.FC<QRPlacementToolProps> = ({ version, onGenerate, 
                 y: pos.y,
               })}
               className="text-drag-handle"
-            />
+            >
+              <div className="drag-handle-label text-label">Text</div>
+            </Rnd>
           )}
         </div>
       )}
@@ -212,10 +207,17 @@ const QRPlacementTool: React.FC<QRPlacementToolProps> = ({ version, onGenerate, 
       <div className="button-container">
         <button
           onClick={handleGenerate}
-          className="btn btn-primary"
+          className="generate-button"
           disabled={!image || loading}
         >
-          {loading ? <span className="spinner"></span> : 'Generate QR Codes'}
+          {loading ? (
+            <div className="loading-indicator">
+              <Loader2 className="loading-icon" />
+              <span>Generating...</span>
+            </div>
+          ) : (
+            <span>Generate QR Codes</span>
+          )}
         </button>
       </div>
     </div>

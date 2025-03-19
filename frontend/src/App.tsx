@@ -1,8 +1,10 @@
-import React, { useState } from 'react';
-import { QrCode } from 'lucide-react';
+import React, { useState, useEffect } from 'react';
+import { QrCode, Terminal } from 'lucide-react';
 import QRPlacementTool from './components/QRPlacementTool';
 import PreviewPanel from './components/PreviewPanel';
-import './styles/app.css';
+import Preloader from './components/Preloader';
+import './App.css';
+import JSZip from 'jszip';
 
 // Declare the window.go interface for Wails
 declare global {
@@ -21,22 +23,35 @@ const App: React.FC = () => {
   const [toolVersion, setToolVersion] = useState<'v1' | 'v2'>('v2');
   const [zipData, setZipData] = useState<Uint8Array | null>(null);
   const [previewImage, setPreviewImage] = useState<string | null>(null);
+  const [loading, setLoading] = useState(false);
+  const [currentView, setCurrentView] = useState<'upload' | 'preview'>('upload');
 
   const handleFileChange = () => {
     setZipData(null);
     setPreviewImage(null);
   };
 
+  // Extract an actual QR-overlaid image from the ZIP for preview
   const extractPreviewFromZip = async (arrayBuffer: ArrayBuffer): Promise<string | null> => {
     try {
-      // In a real implementation, you would extract a preview from the ZIP
-      // For this demo, we'll simulate it by creating a data URL from the first few bytes
-      // In production, you'd want to actually extract an image from the ZIP
+      const zip = new JSZip();
+      const contents = await zip.loadAsync(arrayBuffer);
       
-      // Simulate a preview image by creating a data URL
-      // This is just a placeholder. In a real app, you'd extract the actual image from the ZIP.
-      const uint8Array = new Uint8Array(arrayBuffer);
-      return `data:image/jpeg;base64,/9j/4AAQSkZJRgABAQEAYABgAAD/2wBDAAMCAgMCAgMDAwMEAwMEBQgFBQQEBQoHBwYIDAoMDAsKCwsNDhIQDQ4RDgsLEBYQERMUFRUVDA8XGBYUGBIUFRT/2wBDAQMEBAUEBQkFBQkUDQsNFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBT/wAARCACAAIADASIAAhEBAxEB/8QAHwAAAQUBAQEBAQEAAAAAAAAAAAECAwQFBgcICQoL/8QAtRAAAgEDAwIEAwUFBAQAAAF9AQIDAAQRBRIhMUEGE1FhByJxFDKBkaEII0KxwRVS0fAkM2JyggkKFhcYGRolJicoKSo0NTY3ODk6Q0RFRkdISUpTVFVWV1hZWmNkZWZnaGlqc3R1dnd4eXqDhIWGh4iJipKTlJWWl5iZmqKjpKWmp6ipqrKztLW2t7i5usLDxMXGx8jJytLT1NXW19jZ2uHi4+Tl5ufo6erx8vP09fb3+Pn6/8QAHwEAAwEBAQEBAQEBAQAAAAAAAAECAwQFBgcICQoL/8QAtREAAgECBAQDBAcFBAQAAQJ3AAECAxEEBSExBhJBUQdhcRMiMoEIFEKRobHBCSMzUvAVYnLRChYkNOEl8RcYGRomJygpKjU2Nzg5OkNERUZHSElKU1RVVldYWVpjZGVmZ2hpanN0dXZ3eHl6goOEhYaHiImKkpOUlZaXmJmaoqOkpaanqKmqsrO0tba3uLm6wsPExcbHyMnK0tPU1dbX2Nna4uPk5ebn6Onq8vP09fb3+Pn6/9oADAMBAAIRAxEAPwD9U6KKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigD/9k=`;
+      // Look for image files in the zip
+      const imageFiles = Object.keys(contents.files).filter(filename => 
+        filename.endsWith('.png') || filename.endsWith('.jpg') || filename.endsWith('.jpeg')
+      );
+      
+      // If we found image files, extract the first one
+      if (imageFiles.length > 0) {
+        const firstImage = imageFiles[0];
+        const imageBlob = await contents.files[firstImage].async('blob');
+        return URL.createObjectURL(imageBlob);
+      }
+      
+      // Fallback to a placeholder if no images are found
+      console.error('No image files found in the ZIP');
+      return null;
     } catch (error) {
       console.error('Error extracting preview from ZIP:', error);
       return null;
@@ -44,6 +59,7 @@ const App: React.FC = () => {
   };
 
   const handleDownload = async (data: any) => {
+    setLoading(true);
     try {
       const response = await fetch('http://localhost:4006/guest/overlay-qr-code-with-text', {
         method: 'POST',
@@ -62,14 +78,21 @@ const App: React.FC = () => {
       
       // Extract a preview image from the ZIP
       const preview = await extractPreviewFromZip(arrayBuffer);
-      setPreviewImage(preview);
       
       // Set ZIP data for download
       setZipData(zipDataArray);
+      
+      // Set the preview image from the ZIP
+      setPreviewImage(preview);
+      
+      // Switch to preview view
+      setCurrentView('preview');
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : 'An unknown error occurred';
       console.error('Error downloading ZIP:', error);
       alert(`Failed to download QR codes: ${errorMessage}`);
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -87,6 +110,8 @@ const App: React.FC = () => {
         const success = await window.go.main.App.SaveFile('guest_qr_images.zip', base64Data);
         if (success) {
           setZipData(null); // Clear zipData after saving
+          setPreviewImage(null); // Clear preview after saving
+          setCurrentView('upload'); // Return to upload view
         } else {
           alert('Failed to save the ZIP file. Please try again.');
         }
@@ -97,41 +122,71 @@ const App: React.FC = () => {
     }
   };
 
+  const handleBackToUpload = () => {
+    setCurrentView('upload');
+  };
+
   return (
     <div className="app-container">
+      {loading && <Preloader loading={loading} />}
+      
       <header className="app-header">
         <div className="app-logo">
-          <QrCode size={24} />
+          <QrCode className="app-icon" />
           <h1>QR Code Generator</h1>
         </div>
-        <div className="tool-selector">
-          <label>Select Tool Version:</label>
-          <select
-            value={toolVersion}
-            onChange={(e) => setToolVersion(e.target.value as 'v1' | 'v2')}
-          >
-            <option value="v1">Version 1 (QR Only)</option>
-            <option value="v2">Version 2 (QR + Text)</option>
-          </select>
-        </div>
+        
+        {currentView === 'upload' && (
+          <div className="tool-selector">
+            <label>Tool Version:</label>
+            <select
+              value={toolVersion}
+              onChange={(e) => setToolVersion(e.target.value as 'v1' | 'v2')}
+            >
+              <option value="v1">Version 1 (QR Only)</option>
+              <option value="v2">Version 2 (QR + Text)</option>
+            </select>
+          </div>
+        )}
       </header>
       
-      <div className="app-content">
-        <div className="left-panel">
-          <QRPlacementTool 
-            version={toolVersion} 
-            onGenerate={handleDownload} 
-            onFileChange={handleFileChange} 
-          />
+      <main className="app-content">
+        {currentView === 'upload' ? (
+          <div className="tool-panel full-width">
+            <QRPlacementTool 
+              version={toolVersion} 
+              onGenerate={handleDownload} 
+              onFileChange={handleFileChange} 
+            />
+          </div>
+        ) : (
+          <div className="preview-panel full-width">
+            <PreviewPanel 
+              previewImage={previewImage} 
+              zipData={zipData} 
+              onSave={handleSave}
+              onBack={handleBackToUpload}
+            />
+          </div>
+        )}
+      </main>
+      
+      <footer className="app-footer">
+        <div className="footer-content">
+          <span>QR Code Generator v1.0</span>
+          <a 
+            href="#" 
+            onClick={(e) => {
+              e.preventDefault();
+              console.log('QR Code Generator - Built with Wails and React');
+            }}
+            className="dev-link"
+          >
+            <Terminal className="footer-icon" />
+            <span>Developer Console</span>
+          </a>
         </div>
-        <div className="right-panel">
-          <PreviewPanel 
-            previewImage={previewImage} 
-            zipData={zipData} 
-            onSave={handleSave} 
-          />
-        </div>
-      </div>
+      </footer>
     </div>
   );
 };

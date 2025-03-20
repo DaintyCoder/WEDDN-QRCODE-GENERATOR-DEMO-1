@@ -6,7 +6,6 @@ import Preloader from './components/Preloader';
 import './App.css';
 import JSZip from 'jszip';
 
-// Declare the window.go interface for Wails
 declare global {
   interface Window {
     go: {
@@ -19,6 +18,13 @@ declare global {
   }
 }
 
+interface Coords {
+  x: number;
+  y: number;
+  width: number;
+  height: number;
+}
+
 const App: React.FC = () => {
   const [toolVersion, setToolVersion] = useState<'v1' | 'v2'>('v2');
   const [zipData, setZipData] = useState<Uint8Array | null>(null);
@@ -26,27 +32,35 @@ const App: React.FC = () => {
   const [loading, setLoading] = useState(false);
   const [currentView, setCurrentView] = useState<'upload' | 'preview'>('upload');
   const [toast, setToast] = useState<string | null>(null);
+  const [uploadedImage, setUploadedImage] = useState<string | null>(null);
+  const [qrCoords, setQrCoords] = useState<Coords>({ x: 50, y: 50, width: 100, height: 100 });
+  const [textCoords, setTextCoords] = useState<Coords>({ x: 50, y: 200, width: 200, height: 50 });
+  const [imageDimensions, setImageDimensions] = useState<{ width: number; height: number } | null>(null);
 
-  const handleFileChange = () => {
+  const handleFileChange = (image: string | null, dimensions: { width: number; height: number } | null) => {
+    setUploadedImage(image);
+    setImageDimensions(dimensions);
     setZipData(null);
     setPreviewImage(null);
+  };
+
+  const handleCoordsChange = (newQrCoords: Coords, newTextCoords: Coords) => {
+    setQrCoords(newQrCoords);
+    setTextCoords(newTextCoords);
   };
 
   const extractPreviewFromZip = async (arrayBuffer: ArrayBuffer): Promise<string | null> => {
     try {
       const zip = new JSZip();
       const contents = await zip.loadAsync(arrayBuffer);
-      
       const imageFiles = Object.keys(contents.files).filter(filename => 
         filename.endsWith('.png') || filename.endsWith('.jpg') || filename.endsWith('.jpeg')
       );
-      
       if (imageFiles.length > 0) {
         const firstImage = imageFiles[0];
         const imageBlob = await contents.files[firstImage].async('blob');
         return URL.createObjectURL(imageBlob);
       }
-      
       console.error('No image files found in the ZIP');
       return null;
     } catch (error) {
@@ -72,7 +86,6 @@ const App: React.FC = () => {
       const blob = await response.blob();
       const arrayBuffer = await blob.arrayBuffer();
       const zipDataArray = new Uint8Array(arrayBuffer);
-      
       const preview = await extractPreviewFromZip(arrayBuffer);
       
       setZipData(zipDataArray);
@@ -118,6 +131,8 @@ const App: React.FC = () => {
 
   const handleBackToUpload = () => {
     setCurrentView('upload');
+    // Note: We don't clear uploadedImage, qrCoords, textCoords, or imageDimensions
+    // to preserve the state when returning to the editor
   };
 
   useEffect(() => {
@@ -162,7 +177,12 @@ const App: React.FC = () => {
             <QRPlacementTool 
               version={toolVersion} 
               onGenerate={handleDownload} 
-              onFileChange={handleFileChange} 
+              onFileChange={handleFileChange}
+              initialImage={uploadedImage}
+              initialQrCoords={qrCoords}
+              initialTextCoords={textCoords}
+              initialImageDimensions={imageDimensions}
+              onCoordsChange={handleCoordsChange}
             />
           </div>
         ) : (

@@ -12,7 +12,6 @@ const PreviewPanel: React.FC<PreviewPanelProps> = ({ previewImage, zipData, onSa
   const [isSaving, setIsSaving] = useState(false);
   const [showAnimation, setShowAnimation] = useState(false);
 
-  // Animation effect when preview image appears
   useEffect(() => {
     if (previewImage) {
       setShowAnimation(true);
@@ -38,6 +37,7 @@ const PreviewPanel: React.FC<PreviewPanelProps> = ({ previewImage, zipData, onSa
           <span>Back to Editor</span>
         </button>
         <h2 className="preview-title">Generated QR Code Preview</h2>
+        <div className="header-spacer" /> {/* Added spacer for symmetry */}
       </div>
       
       <div className={`preview-content ${previewImage ? 'has-preview' : 'no-preview'}`}>

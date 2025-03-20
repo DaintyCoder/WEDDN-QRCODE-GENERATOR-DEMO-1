@@ -290,7 +290,8 @@ body {
 .preview-header {
   display: flex;
   align-items: center;
-  gap: 1rem;
+  justify-content: space-between; /* Changed from gap to space-between */
+  width: 100%;
 }
 
 .back-button {
@@ -317,12 +318,17 @@ body {
 }
 
 .preview-title {
-  flex: 1;
   font-size: 1.5rem;
   font-weight: 600;
   margin: 0;
   text-align: center;
   color: #1f2937;
+  flex-grow: 1; /* Ensures it takes up available space */
+}
+
+.header-spacer {
+  width: 100px; /* Matches approximate width of back button for symmetry */
+  visibility: hidden;
 }
 
 .preview-content {
@@ -517,8 +523,6 @@ body {
 .animate-fade-in {
   animation: fadeIn 0.5s ease;
 }
-
-/* NEW STYLES ADDED BELOW */
 
 /* Email Input */
 .email-input-container {

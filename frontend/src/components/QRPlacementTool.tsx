@@ -12,17 +12,31 @@ interface Coords {
 interface QRPlacementToolProps {
   version: 'v1' | 'v2';
   onGenerate: (data: any) => Promise<void>;
-  onFileChange: () => void;
+  onFileChange: (image: string | null, dimensions: { width: number; height: number } | null) => void;
+  initialImage: string | null;
+  initialQrCoords: Coords;
+  initialTextCoords: Coords;
+  initialImageDimensions: { width: number; height: number } | null;
+  onCoordsChange: (qrCoords: Coords, textCoords: Coords) => void;
 }
 
-const QRPlacementTool: React.FC<QRPlacementToolProps> = ({ version, onGenerate, onFileChange }) => {
-  const [image, setImage] = useState<string | null>(null);
-  const [qrCoords, setQrCoords] = useState<Coords>({ x: 50, y: 50, width: 100, height: 100 });
-  const [textCoords, setTextCoords] = useState<Coords>({ x: 50, y: 200, width: 200, height: 50 });
+const QRPlacementTool: React.FC<QRPlacementToolProps> = ({
+  version,
+  onGenerate,
+  onFileChange,
+  initialImage,
+  initialQrCoords,
+  initialTextCoords,
+  initialImageDimensions,
+  onCoordsChange,
+}) => {
+  const [image, setImage] = useState<string | null>(initialImage);
+  const [qrCoords, setQrCoords] = useState<Coords>(initialQrCoords);
+  const [textCoords, setTextCoords] = useState<Coords>(initialTextCoords);
   const [email, setEmail] = useState('');
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
   const fileInputRef = useRef<HTMLInputElement | null>(null);
-  const [imageDimensions, setImageDimensions] = useState<{ width: number; height: number } | null>(null);
+  const [imageDimensions, setImageDimensions] = useState<{ width: number; height: number } | null>(initialImageDimensions);
   const [loading, setLoading] = useState(false);
   const [isDragging, setIsDragging] = useState(false);
 
@@ -40,7 +54,7 @@ const QRPlacementTool: React.FC<QRPlacementToolProps> = ({ version, onGenerate, 
     img.onload = () => {
       setImageDimensions({ width: img.width, height: img.height });
       setImage(imgURL);
-      onFileChange();
+      onFileChange(imgURL, { width: img.width, height: img.height });
     };
   };
 
@@ -112,6 +126,40 @@ const QRPlacementTool: React.FC<QRPlacementToolProps> = ({ version, onGenerate, 
     }
   };
 
+  const handleQrDragStop = (e: any, d: any) => {
+    const newQrCoords = { ...qrCoords, x: d.x, y: d.y };
+    setQrCoords(newQrCoords);
+    onCoordsChange(newQrCoords, textCoords);
+  };
+
+  const handleQrResizeStop = (e: any, dir: any, ref: any, delta: any, pos: any) => {
+    const newQrCoords = {
+      width: parseInt(ref.style.width),
+      height: parseInt(ref.style.height),
+      x: pos.x,
+      y: pos.y,
+    };
+    setQrCoords(newQrCoords);
+    onCoordsChange(newQrCoords, textCoords);
+  };
+
+  const handleTextDragStop = (e: any, d: any) => {
+    const newTextCoords = { ...textCoords, x: d.x, y: d.y };
+    setTextCoords(newTextCoords);
+    onCoordsChange(qrCoords, newTextCoords);
+  };
+
+  const handleTextResizeStop = (e: any, dir: any, ref: any, delta: any, pos: any) => {
+    const newTextCoords = {
+      width: parseInt(ref.style.width),
+      height: parseInt(ref.style.height),
+      x: pos.x,
+      y: pos.y,
+    };
+    setTextCoords(newTextCoords);
+    onCoordsChange(qrCoords, newTextCoords);
+  };
+
   return (
     <div className="qr-placement-tool">
       <div 
@@ -161,13 +209,8 @@ const QRPlacementTool: React.FC<QRPlacementToolProps> = ({ version, onGenerate, 
             size={{ width: qrCoords.width, height: qrCoords.height }}
             position={{ x: qrCoords.x, y: qrCoords.y }}
             bounds="parent"
-            onDragStop={(e, d) => setQrCoords({ ...qrCoords, x: d.x, y: d.y })}
-            onResizeStop={(e, dir, ref, delta, pos) => setQrCoords({
-              width: parseInt(ref.style.width),
-              height: parseInt(ref.style.height),
-              x: pos.x,
-              y: pos.y,
-            })}
+            onDragStop={handleQrDragStop}
+            onResizeStop={handleQrResizeStop}
             className="qr-drag-handle"
           >
             <div className="drag-handle-label qr-label">QR Code</div>
@@ -177,13 +220,8 @@ const QRPlacementTool: React.FC<QRPlacementToolProps> = ({ version, onGenerate, 
               size={{ width: textCoords.width, height: textCoords.height }}
               position={{ x: textCoords.x, y: textCoords.y }}
               bounds="parent"
-              onDragStop={(e, d) => setTextCoords({ ...textCoords, x: d.x, y: d.y })}
-              onResizeStop={(e, dir, ref, delta, pos) => setTextCoords({
-                width: parseInt(ref.style.width),
-                height: parseInt(ref.style.height),
-                x: pos.x,
-                y: pos.y,
-              })}
+              onDragStop={handleTextDragStop}
+              onResizeStop={handleTextResizeStop}
               className="text-drag-handle"
             >
               <div className="drag-handle-label text-label">Text</div>

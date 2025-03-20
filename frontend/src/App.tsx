@@ -25,31 +25,28 @@ const App: React.FC = () => {
   const [previewImage, setPreviewImage] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
   const [currentView, setCurrentView] = useState<'upload' | 'preview'>('upload');
+  const [toast, setToast] = useState<string | null>(null);
 
   const handleFileChange = () => {
     setZipData(null);
     setPreviewImage(null);
   };
 
-  // Extract an actual QR-overlaid image from the ZIP for preview
   const extractPreviewFromZip = async (arrayBuffer: ArrayBuffer): Promise<string | null> => {
     try {
       const zip = new JSZip();
       const contents = await zip.loadAsync(arrayBuffer);
       
-      // Look for image files in the zip
       const imageFiles = Object.keys(contents.files).filter(filename => 
         filename.endsWith('.png') || filename.endsWith('.jpg') || filename.endsWith('.jpeg')
       );
       
-      // If we found image files, extract the first one
       if (imageFiles.length > 0) {
         const firstImage = imageFiles[0];
         const imageBlob = await contents.files[firstImage].async('blob');
         return URL.createObjectURL(imageBlob);
       }
       
-      // Fallback to a placeholder if no images are found
       console.error('No image files found in the ZIP');
       return null;
     } catch (error) {
@@ -76,21 +73,19 @@ const App: React.FC = () => {
       const arrayBuffer = await blob.arrayBuffer();
       const zipDataArray = new Uint8Array(arrayBuffer);
       
-      // Extract a preview image from the ZIP
       const preview = await extractPreviewFromZip(arrayBuffer);
       
-      // Set ZIP data for download
       setZipData(zipDataArray);
-      
-      // Set the preview image from the ZIP
       setPreviewImage(preview);
-      
-      // Switch to preview view
       setCurrentView('preview');
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : 'An unknown error occurred';
       console.error('Error downloading ZIP:', error);
-      alert(`Failed to download QR codes: ${errorMessage}`);
+      if (errorMessage === "The email provided is not valid") {
+        setToast('Invalid email provided. Please use a registered email address.');
+      } else {
+        setToast(`Failed to generate QR codes: ${errorMessage}`);
+      }
     } finally {
       setLoading(false);
     }
@@ -98,8 +93,7 @@ const App: React.FC = () => {
 
   const handleSave = async () => {
     if (zipData) {
-      // Convert Uint8Array to base64 in chunks to avoid stack overflow
-      const chunkSize = 8192; // Process 8KB at a time
+      const chunkSize = 8192;
       let binaryString = '';
       for (let i = 0; i < zipData.length; i += chunkSize) {
         const chunk = zipData.subarray(i, i + chunkSize);
@@ -109,15 +103,15 @@ const App: React.FC = () => {
       try {
         const success = await window.go.main.App.SaveFile('guest_qr_images.zip', base64Data);
         if (success) {
-          setZipData(null); // Clear zipData after saving
-          setPreviewImage(null); // Clear preview after saving
-          setCurrentView('upload'); // Return to upload view
+          setZipData(null);
+          setPreviewImage(null);
+          setCurrentView('upload');
         } else {
-          alert('Failed to save the ZIP file. Please try again.');
+          setToast('Failed to save the ZIP file. Please try again.');
         }
       } catch (error) {
         console.error('Error saving ZIP file:', error);
-        alert('An error occurred while saving the ZIP file.');
+        setToast('An error occurred while saving the ZIP file.');
       }
     }
   };
@@ -126,9 +120,21 @@ const App: React.FC = () => {
     setCurrentView('upload');
   };
 
+  useEffect(() => {
+    if (toast) {
+      const timer = setTimeout(() => setToast(null), 3000);
+      return () => clearTimeout(timer);
+    }
+  }, [toast]);
+
   return (
     <div className="app-container">
       {loading && <Preloader loading={loading} />}
+      {toast && (
+        <div className="toast">
+          {toast}
+        </div>
+      )}
       
       <header className="app-header">
         <div className="app-logo">

@@ -19,6 +19,7 @@ const QRPlacementTool: React.FC<QRPlacementToolProps> = ({ version, onGenerate, 
   const [image, setImage] = useState<string | null>(null);
   const [qrCoords, setQrCoords] = useState<Coords>({ x: 50, y: 50, width: 100, height: 100 });
   const [textCoords, setTextCoords] = useState<Coords>({ x: 50, y: 200, width: 200, height: 50 });
+  const [email, setEmail] = useState('');
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
   const fileInputRef = useRef<HTMLInputElement | null>(null);
   const [imageDimensions, setImageDimensions] = useState<{ width: number; height: number } | null>(null);
@@ -42,8 +43,6 @@ const QRPlacementTool: React.FC<QRPlacementToolProps> = ({ version, onGenerate, 
       onFileChange();
     };
   };
-
-  // ... keep existing code (drag and drop handlers)
 
   const drawCanvas = () => {
     if (image && canvasRef.current) {
@@ -85,37 +84,26 @@ const QRPlacementTool: React.FC<QRPlacementToolProps> = ({ version, onGenerate, 
           reader.readAsDataURL(blob);
         });
 
-        // ... keep existing code (coordinates calculation)
-        
-        // Call onGenerate with proper data
-        if (version === 'v1') {
-          await onGenerate({
-            image: base64Image,
-            qrCoordinates: {
-              x: Math.round(qrCoords.x * imageDimensions.width / canvasRef.current!.width),
-              y: Math.round(qrCoords.y * imageDimensions.height / canvasRef.current!.height),
-              width: Math.round(qrCoords.width * imageDimensions.width / canvasRef.current!.width),
-              height: Math.round(qrCoords.height * imageDimensions.height / canvasRef.current!.height),
-            },
-            textCoordinates: {},
-          });
-        } else {
-          await onGenerate({
-            image: base64Image,
-            qrCoordinates: {
-              x: Math.round(qrCoords.x * imageDimensions.width / canvasRef.current!.width),
-              y: Math.round(qrCoords.y * imageDimensions.height / canvasRef.current!.height),
-              width: Math.round(qrCoords.width * imageDimensions.width / canvasRef.current!.width),
-              height: Math.round(qrCoords.height * imageDimensions.height / canvasRef.current!.height),
-            },
-            textCoordinates: {
-              x: Math.round(textCoords.x * imageDimensions.width / canvasRef.current!.width),
-              y: Math.round(textCoords.y * imageDimensions.height / canvasRef.current!.height),
-              width: Math.round(textCoords.width * imageDimensions.width / canvasRef.current!.width),
-              height: Math.round(textCoords.height * imageDimensions.height / canvasRef.current!.height),
-            },
-          });
-        }
+        const qrCoordinates = {
+          x: Math.round(qrCoords.x * imageDimensions.width / canvasRef.current!.width),
+          y: Math.round(qrCoords.y * imageDimensions.height / canvasRef.current!.height),
+          width: Math.round(qrCoords.width * imageDimensions.width / canvasRef.current!.width),
+          height: Math.round(qrCoords.height * imageDimensions.height / canvasRef.current!.height),
+        };
+
+        const data = {
+          image: base64Image,
+          qrCoordinates,
+          textCoordinates: version === 'v2' ? {
+            x: Math.round(textCoords.x * imageDimensions.width / canvasRef.current!.width),
+            y: Math.round(textCoords.y * imageDimensions.height / canvasRef.current!.height),
+            width: Math.round(textCoords.width * imageDimensions.width / canvasRef.current!.width),
+            height: Math.round(textCoords.height * imageDimensions.height / canvasRef.current!.height),
+          } : {},
+          email: email
+        };
+
+        await onGenerate(data);
       } catch (error) {
         console.error('Error generating QR codes:', error);
       } finally {
@@ -205,20 +193,33 @@ const QRPlacementTool: React.FC<QRPlacementToolProps> = ({ version, onGenerate, 
       )}
 
       <div className="button-container">
-        <button
-          onClick={handleGenerate}
-          className="generate-button"
-          disabled={!image || loading}
-        >
-          {loading ? (
-            <div className="loading-indicator">
-              <Loader2 className="loading-icon" />
-              <span>Generating...</span>
+        {image && (
+          <>
+            <div className="email-input-container">
+              <input
+                type="email"
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                placeholder="Enter your email"
+                className="email-input"
+              />
             </div>
-          ) : (
-            <span>Generate QR Codes</span>
-          )}
-        </button>
+            <button
+              onClick={handleGenerate}
+              className="generate-button"
+              disabled={!image || loading || !email}
+            >
+              {loading ? (
+                <div className="loading-indicator">
+                  <Loader2 className="loading-icon" />
+                  <span>Generating...</span>
+                </div>
+              ) : (
+                <span>Generate QR Codes</span>
+              )}
+            </button>
+          </>
+        )}
       </div>
     </div>
   );

@@ -1,10 +1,11 @@
 import React, { useState, useEffect } from 'react';
-import { QrCode, Terminal } from 'lucide-react';
+import { Terminal } from 'lucide-react';
 import QRPlacementTool from './components/QRPlacementTool';
 import PreviewPanel from './components/PreviewPanel';
 import Preloader from './components/Preloader';
 import './App.css';
 import JSZip from 'jszip';
+import Logo from './assets/images/weddn-desktop-logo.svg';
 
 declare global {
   interface Window {
@@ -38,8 +39,13 @@ const App: React.FC = () => {
   const [imageDimensions, setImageDimensions] = useState<{ width: number; height: number } | null>(null);
 
   const handleFileChange = (image: string | null, dimensions: { width: number; height: number } | null) => {
+    console.log('handleFileChange called:', { image, dimensions });
     setUploadedImage(image);
     setImageDimensions(dimensions);
+    if (!image) {
+      setQrCoords({ x: 50, y: 50, width: 100, height: 100 });
+      setTextCoords({ x: 50, y: 200, width: 200, height: 50 });
+    }
     setZipData(null);
     setPreviewImage(null);
   };
@@ -116,9 +122,7 @@ const App: React.FC = () => {
       try {
         const success = await window.go.main.App.SaveFile('guest_qr_images.zip', base64Data);
         if (success) {
-          setZipData(null);
-          setPreviewImage(null);
-          setCurrentView('upload');
+          setToast('ZIP folder saved successfully!');
         } else {
           setToast('Failed to save the ZIP file. Please try again.');
         }
@@ -131,8 +135,6 @@ const App: React.FC = () => {
 
   const handleBackToUpload = () => {
     setCurrentView('upload');
-    // Note: We don't clear uploadedImage, qrCoords, textCoords, or imageDimensions
-    // to preserve the state when returning to the editor
   };
 
   useEffect(() => {
@@ -146,14 +148,14 @@ const App: React.FC = () => {
     <div className="app-container">
       {loading && <Preloader loading={loading} />}
       {toast && (
-        <div className="toast">
+        <div className={`toast ${toast.includes('successfully') ? 'toast-success' : ''}`}>
           {toast}
         </div>
       )}
       
       <header className="app-header">
         <div className="app-logo">
-          <QrCode className="app-icon" />
+          <img src={Logo} alt="Logo" className="app-icon" />
           <h1>QR Code Generator</h1>
         </div>
         
@@ -178,10 +180,10 @@ const App: React.FC = () => {
               version={toolVersion} 
               onGenerate={handleDownload} 
               onFileChange={handleFileChange}
-              initialImage={uploadedImage}
-              initialQrCoords={qrCoords}
-              initialTextCoords={textCoords}
-              initialImageDimensions={imageDimensions}
+              image={uploadedImage}
+              qrCoords={qrCoords}
+              textCoords={textCoords}
+              imageDimensions={imageDimensions}
               onCoordsChange={handleCoordsChange}
             />
           </div>

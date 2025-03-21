@@ -1,6 +1,6 @@
 import React, { useRef, useState, useEffect } from 'react';
 import { Rnd } from 'react-rnd';
-import { Upload, Loader2 } from 'lucide-react';
+import { Upload, Loader2, Info, ArrowLeft } from 'lucide-react';
 
 interface Coords { 
   x: number; 
@@ -13,10 +13,10 @@ interface QRPlacementToolProps {
   version: 'v1' | 'v2';
   onGenerate: (data: any) => Promise<void>;
   onFileChange: (image: string | null, dimensions: { width: number; height: number } | null) => void;
-  initialImage: string | null;
-  initialQrCoords: Coords;
-  initialTextCoords: Coords;
-  initialImageDimensions: { width: number; height: number } | null;
+  image: string | null;
+  qrCoords: Coords;
+  textCoords: Coords;
+  imageDimensions: { width: number; height: number } | null;
   onCoordsChange: (qrCoords: Coords, textCoords: Coords) => void;
 }
 
@@ -24,21 +24,18 @@ const QRPlacementTool: React.FC<QRPlacementToolProps> = ({
   version,
   onGenerate,
   onFileChange,
-  initialImage,
-  initialQrCoords,
-  initialTextCoords,
-  initialImageDimensions,
+  image,
+  qrCoords,
+  textCoords,
+  imageDimensions,
   onCoordsChange,
 }) => {
-  const [image, setImage] = useState<string | null>(initialImage);
-  const [qrCoords, setQrCoords] = useState<Coords>(initialQrCoords);
-  const [textCoords, setTextCoords] = useState<Coords>(initialTextCoords);
   const [email, setEmail] = useState('');
-  const canvasRef = useRef<HTMLCanvasElement | null>(null);
-  const fileInputRef = useRef<HTMLInputElement | null>(null);
-  const [imageDimensions, setImageDimensions] = useState<{ width: number; height: number } | null>(initialImageDimensions);
+  const [showInfo, setShowInfo] = useState(false);
   const [loading, setLoading] = useState(false);
   const [isDragging, setIsDragging] = useState(false);
+  const canvasRef = useRef<HTMLCanvasElement | null>(null);
+  const fileInputRef = useRef<HTMLInputElement | null>(null);
 
   const handleImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -52,8 +49,7 @@ const QRPlacementTool: React.FC<QRPlacementToolProps> = ({
     const img = new Image();
     img.src = imgURL;
     img.onload = () => {
-      setImageDimensions({ width: img.width, height: img.height });
-      setImage(imgURL);
+      console.log('Image loaded:', imgURL);
       onFileChange(imgURL, { width: img.width, height: img.height });
     };
   };
@@ -83,6 +79,7 @@ const QRPlacementTool: React.FC<QRPlacementToolProps> = ({
   };
 
   useEffect(() => {
+    console.log('Image prop changed:', image);
     drawCanvas();
   }, [image]);
 
@@ -128,7 +125,6 @@ const QRPlacementTool: React.FC<QRPlacementToolProps> = ({
 
   const handleQrDragStop = (e: any, d: any) => {
     const newQrCoords = { ...qrCoords, x: d.x, y: d.y };
-    setQrCoords(newQrCoords);
     onCoordsChange(newQrCoords, textCoords);
   };
 
@@ -139,13 +135,11 @@ const QRPlacementTool: React.FC<QRPlacementToolProps> = ({
       x: pos.x,
       y: pos.y,
     };
-    setQrCoords(newQrCoords);
     onCoordsChange(newQrCoords, textCoords);
   };
 
   const handleTextDragStop = (e: any, d: any) => {
     const newTextCoords = { ...textCoords, x: d.x, y: d.y };
-    setTextCoords(newTextCoords);
     onCoordsChange(qrCoords, newTextCoords);
   };
 
@@ -156,54 +150,76 @@ const QRPlacementTool: React.FC<QRPlacementToolProps> = ({
       x: pos.x,
       y: pos.y,
     };
-    setTextCoords(newTextCoords);
     onCoordsChange(qrCoords, newTextCoords);
+  };
+
+  const handleBackClick = () => {
+    console.log('Back button clicked, resetting image');
+    onFileChange(null, null);
   };
 
   return (
     <div className="qr-placement-tool">
-      <div 
-        className={`file-drop-area ${isDragging ? 'active' : ''} ${image ? 'hidden' : ''}`}
-        onClick={() => fileInputRef.current?.click()}
-        onDragOver={(e) => {
-          e.preventDefault();
-          e.stopPropagation();
-          setIsDragging(true);
-        }}
-        onDragLeave={(e) => {
-          e.preventDefault();
-          e.stopPropagation();
-          setIsDragging(false);
-        }}
-        onDrop={(e) => {
-          e.preventDefault();
-          e.stopPropagation();
-          setIsDragging(false);
-          
-          if (e.dataTransfer.files && e.dataTransfer.files.length > 0) {
-            const file = e.dataTransfer.files[0];
-            if (file.type.includes('image/')) {
-              processFile(file);
-            }
-          }
-        }}
-      >
-        <div className="file-drop-content">
-          <Upload size={48} className="file-drop-icon" />
-          <p className="file-drop-text">Click or drag an image here</p>
-          <p className="file-drop-hint">Supported formats: JPG, PNG, SVG</p>
-        </div>
-        <input 
-          type="file" 
-          ref={fileInputRef}
-          onChange={handleImageUpload} 
-          accept="image/*" 
-          className="hidden" 
-        />
+      <div className="editor-controls">
+        <button 
+          className="info-button"
+          onClick={() => setShowInfo(!showInfo)}
+          title="About this tool"
+        >
+          <Info className="info-icon" />
+        </button>
       </div>
 
-      {image && (
+      {showInfo && (
+        <div className="info-panel">
+          <p>This QR Code Generator allows you to overlay QR codes and text onto your images. Drag and resize the QR Code and Text boxes to position them, enter your email, and generate a ZIP file containing your customized images.</p>
+        </div>
+      )}
+
+      {!image ? (
+        <div 
+          className={`file-drop-area ${isDragging ? 'active' : ''}`}
+          onClick={() => fileInputRef.current?.click()}
+          onDragOver={(e) => {
+            e.preventDefault();
+            e.stopPropagation();
+            setIsDragging(true);
+          }}
+          onDragLeave={(e) => {
+            e.preventDefault();
+            e.stopPropagation();
+            setIsDragging(false);
+          }}
+          onDrop={(e) => {
+            e.preventDefault();
+            e.stopPropagation();
+            setIsDragging(false);
+            if (e.dataTransfer.files && e.dataTransfer.files.length > 0) {
+              const file = e.dataTransfer.files[0];
+              if (file.type.includes('image/')) {
+                processFile(file);
+              }
+            }
+          }}
+        >
+          <div className="file-drop-content">
+            <Upload size={48} className="file-drop-icon" />
+            <p className="file-drop-text">Click or drag an image here</p>
+            <p className="file-drop-hint">Supported formats: JPG, PNG, SVG</p>
+          </div>
+          <input 
+            type="file" 
+            ref={fileInputRef}
+            onChange={handleImageUpload} 
+            accept="image/*" 
+            className="hidden" 
+          />
+        </div>
+      ) : (
         <div className="canvas-container">
+          <button className="editor-back-button" onClick={handleBackClick}>
+            <ArrowLeft className="back-arrow" />
+          </button>
           <canvas ref={canvasRef} />
           <Rnd
             size={{ width: qrCoords.width, height: qrCoords.height }}

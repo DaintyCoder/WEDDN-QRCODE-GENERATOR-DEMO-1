@@ -17,8 +17,9 @@ body {
   justify-content: space-between;
   align-items: center;
   padding: 1rem 2rem;
-  background-color: white;
-  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.05);
+  background-color: #ffffff;
+  box-shadow: 0 2px 15px rgba(0, 0, 0, 0.08);
+  border-bottom: 1px solid #eef2f6;
 }
 
 .app-logo {
@@ -28,9 +29,8 @@ body {
 }
 
 .app-icon {
-  width: 1.75rem;
-  height: 1.75rem;
-  color: #3b82f6;
+  width: 32px;
+  height: 32px;
 }
 
 .app-logo h1 {
@@ -126,6 +126,74 @@ body {
   flex-direction: column;
   gap: 1.5rem;
   width: 100%;
+  background-color: #ffffff;
+  padding: 1.5rem;
+  border-radius: 8px;
+  box-shadow: 0 2px 15px rgba(0, 0, 0, 0.06);
+}
+
+.editor-controls {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  margin-bottom: 1rem;
+}
+
+.editor-back-button {
+  position: absolute;
+  top: 10px;
+  left: 10px;
+  background-color: #28a745;
+  border: none;
+  border-radius: 6px;
+  padding: 0.5rem;
+  cursor: pointer;
+  transition: background-color 0.2s ease;
+  z-index: 10;
+}
+
+.editor-back-button:hover {
+  background-color: #218838;
+}
+
+.back-arrow {
+  width: 20px;
+  height: 20px;
+  color: #ffffff;
+}
+
+.info-button {
+  background-color: transparent;
+  border: 1px solid #d1d5db;
+  border-radius: 6px;
+  padding: 0.5rem;
+  cursor: pointer;
+  transition: background-color 0.2s ease;
+}
+
+.info-button:hover {
+  background-color: #f8f9fa;
+}
+
+.info-icon {
+  width: 20px;
+  height: 20px;
+  color: #6b7280;
+}
+
+.info-panel {
+  background-color: #f8f9fa;
+  padding: 1rem;
+  border-radius: 6px;
+  margin-bottom: 1rem;
+  border: 1px solid #e5e7eb;
+}
+
+.info-panel p {
+  margin: 0;
+  color: #4b5563;
+  font-size: 0.9rem;
+  line-height: 1.5;
 }
 
 .file-drop-area {
@@ -290,7 +358,7 @@ body {
 .preview-header {
   display: flex;
   align-items: center;
-  justify-content: space-between; /* Changed from gap to space-between */
+  justify-content: space-between;
   width: 100%;
 }
 
@@ -323,11 +391,11 @@ body {
   margin: 0;
   text-align: center;
   color: #1f2937;
-  flex-grow: 1; /* Ensures it takes up available space */
+  flex-grow: 1;
 }
 
 .header-spacer {
-  width: 100px; /* Matches approximate width of back button for symmetry */
+  width: 100px;
   visibility: hidden;
 }
 
@@ -549,7 +617,8 @@ body {
 .toast {
   position: fixed;
   top: 20px;
-  right: 20px;
+  left: 50%;
+  transform: translateX(-50%);
   background-color: #ef4444;
   color: white;
   padding: 1rem 1.5rem;
@@ -559,13 +628,17 @@ body {
   animation: slideIn 0.3s ease-out;
 }
 
+.toast-success {
+  background-color: #10b981; /* Green for success */
+}
+
 @keyframes slideIn {
   from {
-    transform: translateX(100%);
+    transform: translateX(-50%) translateY(-100%);
     opacity: 0;
   }
   to {
-    transform: translateX(0);
+    transform: translateX(-50%) translateY(0);
     opacity: 1;
   }
 }

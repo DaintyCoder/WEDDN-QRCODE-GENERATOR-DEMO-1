@@ -73,6 +73,49 @@ jobs:
         env:
           GO111MODULE: on
 
+      - name: Install nfpm (Linux)
+        if: matrix.config.os == 'ubuntu-22.04'
+        run: |
+          go install github.com/goreleaser/nfpm/v2/cmd/nfpm@v2.37.1
+
+      - name: Install NSIS (Windows)
+        if: matrix.config.os == 'windows-latest'
+        run: choco install -y nsis
+
+      - name: Install create-dmg (macOS)
+        if: matrix.config.os == 'macos-latest'
+        run: npm install -g create-dmg
+
+      - name: Create Linux DEB installer
+        if: matrix.config.os == 'ubuntu-22.04'
+        run: |
+          mkdir -p installer/usr/local/bin
+          cp build/bin/QRCodeGenerator installer/usr/local/bin/
+          nfpm package \
+            --config .nfpm.yaml \
+            --packager deb \
+            --target build/bin/QRCodeGenerator.deb
+
+      - name: Create Windows NSIS installer
+        if: matrix.config.os == 'windows-latest'
+        run: |
+          mkdir installer
+          copy build\bin\QRCodeGenerator.exe installer\
+          makensis /DPRODUCT_NAME=QRCodeGenerator /DOUTFILE=build\bin\QRCodeGenerator-installer.exe installer.nsi
+
+      - name: Create macOS DMG installer
+        if: matrix.config.os == 'macos-latest'
+        run: |
+          mkdir -p installer/QRCodeGenerator.app/Contents/MacOS
+          cp build/bin/QRCodeGenerator installer/QRCodeGenerator.app/Contents/MacOS/
+          create-dmg \
+            --volname "QRCodeGenerator Installer" \
+            --window-pos 200 120 \
+            --window-size 800 400 \
+            --app-drop-link 600 185 \
+            build/bin/QRCodeGenerator.dmg \
+            installer/QRCodeGenerator.app
+
       - name: List build output
         run: |
           ls -la build/bin || dir build\bin

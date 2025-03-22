@@ -9,5 +9,12 @@
   "author": {
     "name": "DaintyCoder",
     "email": "daintycoder2@gmail.com"
+  },
+  "info": {
+    "company": "Unboxd",
+    "product": "QR Code Generator",
+    "description": "A QR Code Generator built with Wails",
+    "version": "1.0.0",
+    "icon": "build/appicon/appicon.png"
   }
 }

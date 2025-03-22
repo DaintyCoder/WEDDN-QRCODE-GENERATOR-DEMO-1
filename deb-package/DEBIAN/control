@@ -1,0 +1,5 @@
+Package: weddn-qr-code-generator
+Version: 1.0
+Architecture: amd64
+Maintainer: Unboxd <unboxd@example.com>
+Description: A Weddn QR Code Generator built with Wails and React

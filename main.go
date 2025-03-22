@@ -7,19 +7,29 @@ import (
 
 	"github.com/wailsapp/wails/v2"
 	"github.com/wailsapp/wails/v2/pkg/options"
+	"github.com/wailsapp/wails/v2/pkg/options/assetserver"
+	"github.com/wailsapp/wails/v2/pkg/options/linux"
 	"github.com/wailsapp/wails/v2/pkg/runtime"
 )
 
 //go:embed frontend/dist
 var assets embed.FS
 
+//go:embed build/appicon/appicon.ico
+var icon []byte
+
 func main() {
 	app := NewApp()
 	err := wails.Run(&options.App{
-		Title:     "QR Code Generator",
-		Width:     1024,
-		Height:    768,
-		Assets:    assets,
+		Title:  "QR Code Generator",
+		Width:  1024,
+		Height: 768,
+		AssetServer: &assetserver.Options{
+			Assets: assets,
+		},
+		Linux: &linux.Options{
+			Icon: icon, // Embed the ICO directly
+		},
 		OnStartup: app.startup,
 		Bind: []interface{}{
 			app,

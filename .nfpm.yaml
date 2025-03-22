@@ -1,0 +1,11 @@
+name: "qrcodegenerator"
+arch: "amd64"
+platform: "linux"
+version: "1.0.0"  # Update this with your app version or use a GitHub tag
+maintainer: "Unboxd <unboxd@example.com>"
+description: "A QR Code Generator built with Wails"
+homepage: "https://github.com/your-username/unboxd-wails-qrcode-generator-demo-3"
+license: "MIT"  # Adjust as needed
+contents:
+  - src: "build/bin/QRCodeGenerator"
+    dst: "/usr/local/bin/QRCodeGenerator"

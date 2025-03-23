@@ -73,6 +73,11 @@ jobs:
         env:
           GO111MODULE: on
 
+      - name: Debug build output
+        run: |
+          dir build\bin || ls -la build/bin
+        shell: bash {0}
+
       - name: Install nfpm (Linux)
         if: matrix.config.os == 'ubuntu-22.04'
         run: |
@@ -101,13 +106,12 @@ jobs:
         run: |
           mkdir installer
           copy build\bin\QRCodeGenerator.exe installer\
-          makensis /DPRODUCT_NAME=QRCodeGenerator /DOUTFILE=build\bin\QRCodeGenerator-installer.exe installer.nsi
+          makensis //DPRODUCT_NAME=QRCodeGenerator //DOUTFILE=build\bin\QRCodeGenerator-installer.exe installer.nsi
 
       - name: Create macOS DMG installer
         if: matrix.config.os == 'macos-latest'
         run: |
-          mkdir -p installer/QRCodeGenerator.app/Contents/MacOS
-          cp build/bin/QRCodeGenerator installer/QRCodeGenerator.app/Contents/MacOS/
+          cp -r build/bin/QRCodeGenerator.app installer/
           create-dmg \
             --volname "QRCodeGenerator Installer" \
             --window-pos 200 120 \

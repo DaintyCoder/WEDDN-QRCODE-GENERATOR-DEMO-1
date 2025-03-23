@@ -83,7 +83,7 @@ jobs:
           echo "Wails build completed"
         env:
           GO111MODULE: on
-        shell: ${{ matrix.config.os == 'windows-latest' && 'powershell' || 'bash {0}' }}
+        shell: ${{ runner.os == 'Windows' && 'powershell' || 'bash' }}
 
       - name: Debug build output
         run: |

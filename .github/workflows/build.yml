@@ -21,7 +21,7 @@ jobs:
           - platform: 'windows/amd64'
             os: 'windows-latest'
             artifact-name: 'windows-amd64'
-          - platform: 'darwin/universal'
+          - platform Lég: 'darwin/universal'
             os: 'macos-latest'
             artifact-name: 'darwin-universal'
 
@@ -52,6 +52,7 @@ jobs:
         if: matrix.config.os == 'macos-latest'
         run: |
           xcode-select --install || true
+          sudo xcodebuild -license accept || true  # Accept Xcode license
 
       - name: Set up Node.js
         uses: actions/setup-node@v4
@@ -72,7 +73,7 @@ jobs:
 
       - name: Verify frontend output
         run: |
-          if [ "$RUNNER_OS" = "Windows" ]; then dir frontend\dist; else ls -la frontend/dist; fi
+          if [ "${{ runner.os }}" = "Windows" ]; then powershell -Command "Get-ChildItem frontend/dist"; else ls -la frontend/dist; fi
         shell: bash {0}
 
       - name: Build Wails app
@@ -83,8 +84,9 @@ jobs:
 
       - name: Debug build output
         run: |
-          if [ "$RUNNER_OS" = "Windows" ]; then dir build\bin; else ls -la build/bin; fi
+          if [ "${{ runner.os }}" = "Windows" ]; then powershell -Command "Get-ChildItem build/bin"; else ls -la build/bin; fi
         shell: bash {0}
+        continue-on-error: true  # Continue even if no files are found
 
       - name: Install nfpm (Linux)
         if: matrix.config.os == 'ubuntu-22.04'
@@ -131,7 +133,7 @@ jobs:
 
       - name: List build output
         run: |
-          if [ "$RUNNER_OS" = "Windows" ]; then dir build\bin; else ls -la build/bin; fi
+          if [ "${{ runner.os }}" = "Windows" ]; then powershell -Command "Get-ChildItem build/bin"; else ls -la build/bin; fi
         shell: bash {0}
 
       - name: Upload artifacts

@@ -47,13 +47,11 @@ jobs:
         if: matrix.config.os == 'windows-latest'
         run: |
           choco install -y mingw
-          choco install -y upx  # Optional: Compresses the binary
 
       - name: Install macOS dependencies
         if: matrix.config.os == 'macos-latest'
         run: |
           xcode-select --install || true
-          brew install upx || true  # Optional: Compresses the binary
 
       - name: Set up Node.js
         uses: actions/setup-node@v4
@@ -70,17 +68,22 @@ jobs:
           cd frontend
           npm ci
           npm run build
-          ls -la dist || dir dist
+        shell: bash {0}
+
+      - name: Verify frontend output
+        run: |
+          if [ "$RUNNER_OS" = "Windows" ]; then dir frontend\dist; else ls -la frontend/dist; fi
+        shell: bash {0}
 
       - name: Build Wails app
         run: |
-          wails build -platform ${{ matrix.config.platform }} -o QRCodeGenerator -clean -verbose || exit 1
+          wails build -platform ${{ matrix.config.platform }} -o QRCodeGenerator -clean || exit 1
         env:
           GO111MODULE: on
 
       - name: Debug build output
         run: |
-          ls -la build/bin || dir build\bin
+          if [ "$RUNNER_OS" = "Windows" ]; then dir build\bin; else ls -la build/bin; fi
         shell: bash {0}
 
       - name: Install nfpm (Linux)
@@ -128,7 +131,7 @@ jobs:
 
       - name: List build output
         run: |
-          ls -la build/bin || dir build\bin
+          if [ "$RUNNER_OS" = "Windows" ]; then dir build\bin; else ls -la build/bin; fi
         shell: bash {0}
 
       - name: Upload artifacts

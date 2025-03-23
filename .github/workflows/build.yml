@@ -63,6 +63,7 @@ jobs:
 
       - name: Install Wails CLI
         run: go install github.com/wailsapp/wails/v2/cmd/wails@v2.8.0
+        shell: bash {0}
 
       - name: Install npm dependencies and build frontend
         run: |
@@ -76,14 +77,26 @@ jobs:
           if [ "${{ runner.os }}" = "Windows" ]; then powershell -Command "Get-ChildItem frontend/dist"; else ls -la frontend/dist; fi
         shell: bash {0}
 
-      - name: Build Wails app
+      - name: Build Wails app (Linux/macOS)
+        if: matrix.config.os != 'windows-latest'
         run: |
           echo "Starting Wails build for ${{ matrix.config.platform }}"
           wails build -platform ${{ matrix.config.platform }} -o QRCodeGenerator -clean || exit 1
           echo "Wails build completed"
         env:
           GO111MODULE: on
-        shell: ${{ runner.os == 'Windows' && 'powershell {0}' || 'bash {0}' }}
+        shell: bash {0}
+
+      - name: Build Wails app (Windows)
+        if: matrix.config.os == 'windows-latest'
+        run: |
+          Write-Output "Starting Wails build for ${{ matrix.config.platform }}"
+          wails build -platform ${{ matrix.config.platform }} -o QRCodeGenerator -clean
+          if ($LASTEXITCODE -ne 0) { Write-Output "Build failed"; exit 1 }
+          Write-Output "Wails build completed"
+        env:
+          GO111MODULE: on
+        shell: powershell {0}
 
       - name: Debug build output
         run: |
@@ -95,15 +108,19 @@ jobs:
         if: matrix.config.os == 'ubuntu-22.04'
         run: |
           go install github.com/goreleaser/nfpm/v2/cmd/nfpm@v2.37.1
+        shell: bash {0}
 
       - name: Install NSIS (Windows)
         if: matrix.config.os == 'windows-latest'
         run: |
           choco install -y nsis
+        shell: powershell {0}
 
       - name: Install create-dmg (macOS)
         if: matrix.config.os == 'macos-latest'
-        run: npm install -g create-dmg
+        run: |
+          npm install -g create-dmg
+        shell: bash {0}
 
       - name: Create Linux DEB installer
         if: matrix.config.os == 'ubuntu-22.04'
@@ -114,6 +131,7 @@ jobs:
             --config .nfpm.yaml \
             --packager deb \
             --target build/bin/QRCodeGenerator.deb
+        shell: bash {0}
 
       - name: Create Windows NSIS installer
         if: matrix.config.os == 'windows-latest'
@@ -135,6 +153,7 @@ jobs:
             --app-drop-link 600 185 \
             build/bin/QRCodeGenerator.dmg \
             installer/QRCodeGenerator.app
+        shell: bash {0}
 
       - name: List build output
         run: |

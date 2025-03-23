@@ -79,7 +79,7 @@ jobs:
       - name: Build Wails app
         run: |
           echo "Starting Wails build for ${{ matrix.config.platform }}"
-          wails build -platform ${{ matrix.config.platform }} -o QRCodeGenerator -clean || exit 1
+          wails build -platform ${{ matrix.config.platform }} -o QRCodeGenerator -clean -loglevel Debug || exit 1
           echo "Wails build completed"
         env:
           GO111MODULE: on

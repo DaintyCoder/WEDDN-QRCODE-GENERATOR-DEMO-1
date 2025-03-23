@@ -79,10 +79,15 @@ jobs:
       - name: Build Wails app
         run: |
           echo "Starting Wails build for ${{ matrix.config.platform }}"
-          wails build -platform ${{ matrix.config.platform }} -o QRCodeGenerator -clean -loglevel Debug || exit 1
+          if [ "${{ runner.os }}" = "Windows" ]; then 
+            wails build -platform ${{ matrix.config.platform }} -o QRCodeGenerator -clean; if ($LASTEXITCODE -ne 0) { exit 1 }
+          else 
+            wails build -platform ${{ matrix.config.platform }} -o QRCodeGenerator -clean || exit 1
+          fi
           echo "Wails build completed"
         env:
           GO111MODULE: on
+        shell: bash {0}
 
       - name: Debug build output
         run: |

@@ -83,7 +83,7 @@ jobs:
           echo "Wails build completed"
         env:
           GO111MODULE: on
-        shell: ${{ runner.os == 'Windows' && 'powershell' || 'bash' }}
+        shell: ${{ runner.os == 'Windows' && 'powershell {0}' || 'bash {0}' }}
 
       - name: Debug build output
         run: |
@@ -121,7 +121,7 @@ jobs:
           mkdir installer
           if (Test-Path build\bin\QRCodeGenerator.exe) { Copy-Item build\bin\QRCodeGenerator.exe installer\ } else { Write-Output "Windows binary not found"; exit 1 }
           makensis //DPRODUCT_NAME=QRCodeGenerator //DOUTFILE=build\bin\QRCodeGenerator-installer.exe installer.nsi
-        shell: powershell
+        shell: powershell {0}
 
       - name: Create macOS DMG installer
         if: matrix.config.os == 'macos-latest'

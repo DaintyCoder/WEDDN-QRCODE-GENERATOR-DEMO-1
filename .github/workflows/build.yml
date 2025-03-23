@@ -45,11 +45,15 @@ jobs:
 
       - name: Install Windows dependencies
         if: matrix.config.os == 'windows-latest'
-        run: choco install -y mingw
+        run: |
+          choco install -y mingw
+          choco install -y upx  # Optional: Compresses the binary
 
       - name: Install macOS dependencies
         if: matrix.config.os == 'macos-latest'
-        run: xcode-select --install || true
+        run: |
+          xcode-select --install || true
+          brew install upx || true  # Optional: Compresses the binary
 
       - name: Set up Node.js
         uses: actions/setup-node@v4
@@ -66,10 +70,11 @@ jobs:
           cd frontend
           npm ci
           npm run build
+          ls -la dist || dir dist
 
       - name: Build Wails app
         run: |
-          wails build -platform ${{ matrix.config.platform }} -o QRCodeGenerator -clean
+          wails build -platform ${{ matrix.config.platform }} -o QRCodeGenerator -clean -verbose || exit 1
         env:
           GO111MODULE: on
 
@@ -105,15 +110,14 @@ jobs:
         if: matrix.config.os == 'windows-latest'
         run: |
           mkdir installer
-          copy build\bin\QRCodeGenerator.exe installer\
+          if exist build\bin\QRCodeGenerator.exe (copy build\bin\QRCodeGenerator.exe installer\) else (echo "Windows binary not found" && exit 1)
           makensis //DPRODUCT_NAME=QRCodeGenerator //DOUTFILE=build\bin\QRCodeGenerator-installer.exe installer.nsi
-        shell: powershell
 
       - name: Create macOS DMG installer
         if: matrix.config.os == 'macos-latest'
         run: |
           mkdir -p installer
-          cp -r build/bin/QRCodeGenerator.app installer/
+          if [ -d "build/bin/QRCodeGenerator.app" ]; then cp -r build/bin/QRCodeGenerator.app installer/; else echo "macOS app bundle not found" && exit 1; fi
           create-dmg \
             --volname "QRCodeGenerator Installer" \
             --window-pos 200 120 \

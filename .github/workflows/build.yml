@@ -75,7 +75,7 @@ jobs:
 
       - name: Debug build output
         run: |
-          dir build\bin || ls -la build/bin
+          ls -la build/bin || dir build\bin
         shell: bash {0}
 
       - name: Install nfpm (Linux)
@@ -107,10 +107,12 @@ jobs:
           mkdir installer
           copy build\bin\QRCodeGenerator.exe installer\
           makensis //DPRODUCT_NAME=QRCodeGenerator //DOUTFILE=build\bin\QRCodeGenerator-installer.exe installer.nsi
+        shell: powershell
 
       - name: Create macOS DMG installer
         if: matrix.config.os == 'macos-latest'
         run: |
+          mkdir -p installer
           cp -r build/bin/QRCodeGenerator.app installer/
           create-dmg \
             --volname "QRCodeGenerator Installer" \

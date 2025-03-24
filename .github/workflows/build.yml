@@ -75,19 +75,27 @@ jobs:
         run: |
           cd frontend
           npm ci
+          npm install
         shell: bash {0}
 
-      - name: Build frontend (Linux/macOS)
+      - name: Build frontend and Wails app (Linux/macOS)
         if: matrix.config.os != 'windows-latest'
         run: |
           echo "Building frontend for ${{ matrix.config.platform }}"
           cd frontend
           npm run build 2>&1 | tee frontend-build.log
-          if [ ${PIPESTATUS[0]} -ne 0 ]; then echo "Frontend build failed"; exit 1; fi
+          if [ ${PIPESTATUS[0]} -ne 0 ]; then echo "Frontend build failed"; cat frontend-build.log; exit 1; fi
           ls -la dist || echo "frontend/dist not found"
+          cd ..
+          echo "Starting Wails build for ${{ matrix.config.platform }}"
+          wails build -platform ${{ matrix.config.platform }} -o QRCodeGenerator -clean 2>&1 | tee build.log
+          if [ ${PIPESTATUS[0]} -ne 0 ]; then echo "Build failed, see build.log above"; cat build.log; exit 1; fi
+          echo "Wails build completed"
+        env:
+          GO111MODULE: on
         shell: bash {0}
 
-      - name: Build frontend (Windows)
+      - name: Build frontend and Wails app (Windows)
         if: matrix.config.os == 'windows-latest'
         run: |
           Write-Output "Building frontend for ${{ matrix.config.platform }}"
@@ -96,27 +104,7 @@ jobs:
           if ($LASTEXITCODE -ne 0) { Write-Output "Frontend build failed"; Get-Content frontend-build.log; exit 1 }
           if (-not (Test-Path dist)) { Write-Output "frontend/dist not found"; exit 1 }
           dir dist
-        shell: powershell {0}
-
-      - name: Verify frontend output
-        run: |
-          if [ "${{ runner.os }}" = "Windows" ]; then powershell -Command "Get-ChildItem frontend/dist -ErrorAction SilentlyContinue"; else ls -la frontend/dist || echo "frontend/dist not found"; fi
-        shell: bash {0}
-
-      - name: Build Wails app (Linux/macOS)
-        if: matrix.config.os != 'windows-latest'
-        run: |
-          echo "Starting Wails build for ${{ matrix.config.platform }}"
-          wails build -platform ${{ matrix.config.platform }} -o QRCodeGenerator -clean 2>&1 | tee build.log
-          if [ ${PIPESTATUS[0]} -ne 0 ]; then echo "Build failed, see build.log above"; exit 1; fi
-          echo "Wails build completed"
-        env:
-          GO111MODULE: on
-        shell: bash {0}
-
-      - name: Build Wails app (Windows)
-        if: matrix.config.os == 'windows-latest'
-        run: |
+          cd ..
           Write-Output "Starting Wails build for ${{ matrix.config.platform }}"
           wails build -platform ${{ matrix.config.platform }} -o QRCodeGenerator -clean *> build.log
           if ($LASTEXITCODE -ne 0) { Write-Output "Build failed, see build.log above"; Get-Content build.log; exit 1 }

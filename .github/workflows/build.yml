@@ -17,13 +17,10 @@ jobs:
         config:
           - platform: 'linux/amd64'
             os: 'ubuntu-22.04'
-            artifact-name: 'linux-amd64'
           - platform: 'windows/amd64'
             os: 'windows-latest'
-            artifact-name: 'windows-amd64'
           - platform: 'darwin/universal'
             os: 'macos-latest'
-            artifact-name: 'darwin-universal'
 
     runs-on: ${{ matrix.config.os }}
     steps:
@@ -35,30 +32,21 @@ jobs:
       - name: Set up Go
         uses: actions/setup-go@v5
         with:
-          go-version: '1.22.2'
+          go-version: '1.22'
 
       - name: Install Linux dependencies
         if: matrix.config.os == 'ubuntu-22.04'
         run: |
           sudo apt-get update
           sudo apt-get install -y build-essential libgtk-3-dev libwebkit2gtk-4.0-dev
-        shell: bash {0}
 
       - name: Install Windows dependencies
         if: matrix.config.os == 'windows-latest'
-        run: |
-          choco install -y mingw
-          $env:Path = "$($env:Path);C:\ProgramData\chocolatey\lib\mingw\tools\install\mingw64\bin"
-          gcc --version
-        shell: powershell {0}
+        run: choco install -y mingw
 
       - name: Install macOS dependencies
         if: matrix.config.os == 'macos-latest'
-        run: |
-          xcode-select --install || true
-          sudo xcodebuild -license accept || true
-          sudo xcode-select -switch /Applications/Xcode.app/Contents/Developer
-        shell: bash {0}
+        run: xcode-select --install || true
 
       - name: Set up Node.js
         uses: actions/setup-node@v4
@@ -68,132 +56,28 @@ jobs:
           cache-dependency-path: frontend/package-lock.json
 
       - name: Install Wails CLI
-        run: go install github.com/wailsapp/wails/v2/cmd/wails@v2.8.0
-        shell: bash {0}
+        run: go install github.com/wailsapp/wails/v2/cmd/wails@v2.10.1
 
       - name: Install npm dependencies
         run: |
           cd frontend
           npm ci
-          npm install
-        shell: bash {0}
+          npm run build
 
-      - name: Build frontend and Wails app (Linux/macOS)
-        if: matrix.config.os != 'windows-latest'
+      - name: Build Wails app
         run: |
-          echo "Building frontend for ${{ matrix.config.platform }}"
-          cd frontend
-          npm run build 2>&1 | tee frontend-build.log
-          if [ ${PIPESTATUS[0]} -ne 0 ]; then echo "Frontend build failed"; cat frontend-build.log; exit 1; fi
-          ls -la dist || echo "frontend/dist not found"
-          cd ..
-          echo "Starting Wails build for ${{ matrix.config.platform }}"
-          wails build -platform ${{ matrix.config.platform }} -o QRCodeGenerator -clean 2>&1 | tee build.log
-          if [ ${PIPESTATUS[0]} -ne 0 ]; then echo "Build failed, see build.log above"; cat build.log; exit 1; fi
-          echo "Wails build completed"
+          wails build -platform ${{ matrix.config.platform }} -o QRCodeGenerator
         env:
           GO111MODULE: on
-        shell: bash {0}
-
-      - name: Build frontend and Wails app (Windows)
-        if: matrix.config.os == 'windows-latest'
-        run: |
-          Write-Output "Building frontend for ${{ matrix.config.platform }}"
-          cd frontend
-          npm run build *> frontend-build.log
-          if ($LASTEXITCODE -ne 0) { Write-Output "Frontend build failed"; Get-Content frontend-build.log; exit 1 }
-          if (-not (Test-Path dist)) { Write-Output "frontend/dist not found"; exit 1 }
-          dir dist
-          cd ..
-          Write-Output "Starting Wails build for ${{ matrix.config.platform }}"
-          wails build -platform ${{ matrix.config.platform }} -o QRCodeGenerator -clean *> build.log
-          if ($LASTEXITCODE -ne 0) { Write-Output "Build failed, see build.log above"; Get-Content build.log; exit 1 }
-          Write-Output "Wails build completed"
-        env:
-          GO111MODULE: on
-        shell: powershell {0}
-
-      - name: Debug build output
-        run: |
-          if [ "${{ runner.os }}" = "Windows" ]; then powershell -Command "Get-ChildItem build/bin -ErrorAction SilentlyContinue"; else ls -la build/bin || echo "No files in build/bin"; fi
-        shell: bash {0}
-        continue-on-error: true
-
-      - name: Upload build log (if exists)
-        if: always()
-        uses: actions/upload-artifact@v4
-        with:
-          name: build-log-${{ matrix.config.artifact-name }}
-          path: build.log
-          if-no-files-found: ignore
-
-      - name: Upload frontend build log (if exists)
-        if: always()
-        uses: actions/upload-artifact@v4
-        with:
-          name: frontend-build-log-${{ matrix.config.artifact-name }}
-          path: frontend-build.log
-          if-no-files-found: ignore
-
-      - name: Install nfpm (Linux)
-        if: matrix.config.os == 'ubuntu-22.04'
-        run: |
-          go install github.com/goreleaser/nfpm/v2/cmd/nfpm@v2.37.1
-        shell: bash {0}
-
-      - name: Install NSIS (Windows)
-        if: matrix.config.os == 'windows-latest'
-        run: |
-          choco install -y nsis
-        shell: powershell {0}
-
-      - name: Install create-dmg (macOS)
-        if: matrix.config.os == 'macos-latest'
-        run: |
-          npm install -g create-dmg
-        shell: bash {0}
-
-      - name: Create Linux DEB installer
-        if: matrix.config.os == 'ubuntu-22.04'
-        run: |
-          mkdir -p installer/usr/local/bin
-          cp build/bin/QRCodeGenerator installer/usr/local/bin/
-          nfpm package \
-            --config .nfpm.yaml \
-            --packager deb \
-            --target build/bin/QRCodeGenerator.deb
-        shell: bash {0}
-
-      - name: Create Windows NSIS installer
-        if: matrix.config.os == 'windows-latest'
-        run: |
-          mkdir installer
-          if (Test-Path build\bin\QRCodeGenerator.exe) { Copy-Item build\bin\QRCodeGenerator.exe installer\ } else { Write-Output "Windows binary not found"; exit 1 }
-          makensis //DPRODUCT_NAME=QRCodeGenerator //DOUTFILE=build\bin\QRCodeGenerator-installer.exe installer.nsi
-        shell: powershell {0}
-
-      - name: Create macOS DMG installer
-        if: matrix.config.os == 'macos-latest'
-        run: |
-          mkdir -p installer
-          if [ -d "build/bin/QRCodeGenerator.app" ]; then cp -r build/bin/QRCodeGenerator.app installer/; else echo "macOS app bundle not found" && exit 1; fi
-          create-dmg \
-            --volname "QRCodeGenerator Installer" \
-            --window-pos 200 120 \
-            --window-size 800 400 \
-            --app-drop-link 600 185 \
-            build/bin/QRCodeGenerator.dmg \
-            installer/QRCodeGenerator.app
-        shell: bash {0}
 
       - name: List build output
         run: |
-          if [ "${{ runner.os }}" = "Windows" ]; then powershell -Command "Get-ChildItem build/bin -ErrorAction SilentlyContinue"; else ls -la build/bin || echo "No files in build/bin"; fi
+          ls -la build/bin || dir build\bin
         shell: bash {0}
 
       - name: Upload artifacts
         uses: actions/upload-artifact@v4
         with:
-          name: QRCodeGenerator-${{ matrix.config.artifact-name }}
+          name: QRCodeGenerator-${{ matrix.config.platform == 'linux/amd64' && 'linux-amd64' || matrix.config.platform == 'windows/amd64' && 'windows-amd64' || 'darwin-universal' }}
           path: build/bin/*
           if-no-files-found: error

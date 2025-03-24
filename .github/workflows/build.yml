@@ -94,7 +94,8 @@ jobs:
           cd frontend
           npm run build *> frontend-build.log
           if ($LASTEXITCODE -ne 0) { Write-Output "Frontend build failed"; Get-Content frontend-build.log; exit 1 }
-          dir dist 2>&1 || Write-Output "frontend/dist not found"
+          if (-not (Test-Path dist)) { Write-Output "frontend/dist not found"; exit 1 }
+          dir dist
         shell: powershell {0}
 
       - name: Verify frontend output

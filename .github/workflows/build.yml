@@ -45,14 +45,11 @@ jobs:
 
       - name: Install Windows dependencies
         if: matrix.config.os == 'windows-latest'
-        run: |
-          choco install -y mingw
+        run: choco install -y mingw
 
       - name: Install macOS dependencies
         if: matrix.config.os == 'macos-latest'
-        run: |
-          xcode-select --install || true
-          sudo xcodebuild -license accept || true
+        run: xcode-select --install || true
 
       - name: Set up Node.js
         uses: actions/setup-node@v4
@@ -63,106 +60,24 @@ jobs:
 
       - name: Install Wails CLI
         run: go install github.com/wailsapp/wails/v2/cmd/wails@v2.8.0
-        shell: bash {0}
 
       - name: Install npm dependencies and build frontend
         run: |
           cd frontend
           npm ci
           npm run build
-        shell: bash {0}
 
-      - name: Verify frontend output
-        run: |
-          if [ "${{ runner.os }}" = "Windows" ]; then powershell -Command "Get-ChildItem frontend/dist"; else ls -la frontend/dist; fi
-        shell: bash {0}
-
-      - name: Build Wails app (Linux/macOS)
-        if: matrix.config.os != 'windows-latest'
-        run: |
-          echo "Starting Wails build for ${{ matrix.config.platform }}"
-          wails build -platform ${{ matrix.config.platform }} -o QRCodeGenerator -clean || exit 1
-          echo "Wails build completed"
-        env:
-          GO111MODULE: on
-        shell: bash {0}
-
-      - name: Build Wails app (Windows)
-        if: matrix.config.os == 'windows-latest'
-        run: |
-          Write-Output "Starting Wails build for ${{ matrix.config.platform }}"
+      - imaginerun: |
           wails build -platform ${{ matrix.config.platform }} -o QRCodeGenerator -clean
-          if ($LASTEXITCODE -ne 0) { Write-Output "Build failed"; exit 1 }
-          Write-Output "Wails build completed"
         env:
           GO111MODULE: on
-        shell: powershell {0}
-
-      - name: Debug build output
-        run: |
-          if [ "${{ runner.os }}" = "Windows" ]; then powershell -Command "Get-ChildItem build/bin -ErrorAction SilentlyContinue"; else ls -la build/bin || echo "No files in build/bin"; fi
-        shell: bash {0}
-        continue-on-error: true
-
-      - name: Install nfpm (Linux)
-        if: matrix.config.os == 'ubuntu-22.04'
-        run: |
-          go install github.com/goreleaser/nfpm/v2/cmd/nfpm@v2.37.1
-        shell: bash {0}
-
-      - name: Install NSIS (Windows)
-        if: matrix.config.os == 'windows-latest'
-        run: |
-          choco install -y nsis
-        shell: powershell {0}
-
-      - name: Install create-dmg (macOS)
-        if: matrix.config.os == 'macos-latest'
-        run: |
-          npm install -g create-dmg
-        shell: bash {0}
-
-      - name: Create Linux DEB installer
-        if: matrix.config.os == 'ubuntu-22.04'
-        run: |
-          mkdir -p installer/usr/local/bin
-          cp build/bin/QRCodeGenerator installer/usr/local/bin/
-          nfpm package \
-            --config .nfpm.yaml \
-            --packager deb \
-            --target build/bin/QRCodeGenerator.deb
-        shell: bash {0}
-
-      - name: Create Windows NSIS installer
-        if: matrix.config.os == 'windows-latest'
-        run: |
-          mkdir installer
-          if (Test-Path build\bin\QRCodeGenerator.exe) { Copy-Item build\bin\QRCodeGenerator.exe installer\ } else { Write-Output "Windows binary not found"; exit 1 }
-          makensis //DPRODUCT_NAME=QRCodeGenerator //DOUTFILE=build\bin\QRCodeGenerator-installer.exe installer.nsi
-        shell: powershell {0}
-
-      - name: Create macOS DMG installer
-        if: matrix.config.os == 'macos-latest'
-        run: |
-          mkdir -p installer
-          if [ -d "build/bin/QRCodeGenerator.app" ]; then cp -r build/bin/QRCodeGenerator.app installer/; else echo "macOS app bundle not found" && exit 1; fi
-          create-dmg \
-            --volname "QRCodeGenerator Installer" \
-            --window-pos 200 120 \
-            --window-size 800 400 \
-            --app-drop-link 600 185 \
-            build/bin/QRCodeGenerator.dmg \
-            installer/QRCodeGenerator.app
-        shell: bash {0}
 
       - name: List build output
         run: |
-          if [ "${{ runner.os }}" = "Windows" ]; then powershell -Command "Get-ChildItem build/bin -ErrorAction SilentlyContinue"; else ls -la build/bin || echo "No files in build/bin"; fi
+          ls -la build/bin || dir build\bin
         shell: bash {0}
 
       - name: Upload artifacts
         uses: actions/upload-artifact@v4
         with:
           name: QRCodeGenerator-${{ matrix.config.artifact-name }}
-          path: build/bin/*
-          if-no-files-found: error

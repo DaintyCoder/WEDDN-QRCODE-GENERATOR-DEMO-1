@@ -48,6 +48,8 @@ jobs:
         if: matrix.config.os == 'windows-latest'
         run: |
           choco install -y mingw
+          $env:Path += ";C:\ProgramData\chocolatey\lib\mingw\tools\install\mingw64\bin"
+          gcc --version
         shell: powershell {0}
 
       - name: Install macOS dependencies
@@ -55,7 +57,7 @@ jobs:
         run: |
           xcode-select --install || true
           sudo xcodebuild -license accept || true
-          brew install upx || true  # Optional: Compresses binaries
+          sudo xcode-select -switch /Applications/Xcode.app/Contents/Developer
         shell: bash {0}
 
       - name: Set up Node.js
@@ -97,7 +99,7 @@ jobs:
         run: |
           Write-Output "Starting Wails build for ${{ matrix.config.platform }}"
           wails build -platform ${{ matrix.config.platform }} -o QRCodeGenerator -clean *> build.log
-          if ($LASTEXITCODE -ne 0) { Write-Output "Build failed, see build.log above"; cat build.log; exit 1 }
+          if ($LASTEXITCODE -ne 0) { Write-Output "Build failed, see build.log above"; Get-Content build.log; exit 1 }
           Write-Output "Wails build completed"
         env:
           GO111MODULE: on
@@ -108,6 +110,14 @@ jobs:
           if [ "${{ runner.os }}" = "Windows" ]; then powershell -Command "Get-ChildItem build/bin -ErrorAction SilentlyContinue"; else ls -la build/bin || echo "No files in build/bin"; fi
         shell: bash {0}
         continue-on-error: true
+
+      - name: Upload build log (if exists)
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: build-log-${{ matrix.config.artifact-name }}
+          path: build.log
+          if-no-files-found: ignore
 
       - name: Install nfpm (Linux)
         if: matrix.config.os == 'ubuntu-22.04'

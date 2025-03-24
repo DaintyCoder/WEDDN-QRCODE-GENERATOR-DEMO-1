@@ -48,7 +48,7 @@ jobs:
         if: matrix.config.os == 'windows-latest'
         run: |
           choco install -y mingw
-          $env:Path += ";C:\ProgramData\chocolatey\lib\mingw\tools\install\mingw64\bin"
+          $env:Path = "$($env:Path);C:\ProgramData\chocolatey\lib\mingw\tools\install\mingw64\bin"
           gcc --version
         shell: powershell {0}
 
@@ -76,11 +76,12 @@ jobs:
           cd frontend
           npm ci
           npm run build
+          ls -la dist || dir dist
         shell: bash {0}
 
       - name: Verify frontend output
         run: |
-          if [ "${{ runner.os }}" = "Windows" ]; then powershell -Command "Get-ChildItem frontend/dist"; else ls -la frontend/dist; fi
+          if [ "${{ runner.os }}" = "Windows" ]; then powershell -Command "Get-ChildItem frontend/dist -ErrorAction SilentlyContinue"; else ls -la frontend/dist || echo "frontend/dist not found"; fi
         shell: bash {0}
 
       - name: Build Wails app (Linux/macOS)

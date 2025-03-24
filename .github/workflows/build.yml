@@ -71,13 +71,31 @@ jobs:
         run: go install github.com/wailsapp/wails/v2/cmd/wails@v2.8.0
         shell: bash {0}
 
-      - name: Install npm dependencies and build frontend
+      - name: Install npm dependencies
         run: |
           cd frontend
           npm ci
-          npm run build
-          ls -la dist || dir dist
         shell: bash {0}
+
+      - name: Build frontend (Linux/macOS)
+        if: matrix.config.os != 'windows-latest'
+        run: |
+          echo "Building frontend for ${{ matrix.config.platform }}"
+          cd frontend
+          npm run build 2>&1 | tee frontend-build.log
+          if [ ${PIPESTATUS[0]} -ne 0 ]; then echo "Frontend build failed"; exit 1; fi
+          ls -la dist || echo "frontend/dist not found"
+        shell: bash {0}
+
+      - name: Build frontend (Windows)
+        if: matrix.config.os == 'windows-latest'
+        run: |
+          Write-Output "Building frontend for ${{ matrix.config.platform }}"
+          cd frontend
+          npm run build *> frontend-build.log
+          if ($LASTEXITCODE -ne 0) { Write-Output "Frontend build failed"; Get-Content frontend-build.log; exit 1 }
+          dir dist 2>&1 || Write-Output "frontend/dist not found"
+        shell: powershell {0}
 
       - name: Verify frontend output
         run: |
@@ -118,6 +136,14 @@ jobs:
         with:
           name: build-log-${{ matrix.config.artifact-name }}
           path: build.log
+          if-no-files-found: ignore
+
+      - name: Upload frontend build log (if exists)
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: frontend-build-log-${{ matrix.config.artifact-name }}
+          path: frontend-build.log
           if-no-files-found: ignore
 
       - name: Install nfpm (Linux)

@@ -71,18 +71,23 @@ jobs:
         env:
           GO111MODULE: on
 
-      - name: Set version from tag
-        run: echo "VERSION=${GITHUB_REF#refs/tags/v}" >> $GITHUB_ENV
+      - name: Set version
+        run: |
+          if [[ "${GITHUB_REF}" == refs/tags/v* ]]; then
+            echo "VERSION=${GITHUB_REF#refs/tags/v}" >> $GITHUB_ENV
+          else
+            echo "VERSION=0.0.0-dev" >> $GITHUB_ENV
+          fi
 
       - name: Create DEB package (Linux)
         if: matrix.config.platform == 'linux/amd64'
         run: |
-          mkdir -p build/deb/QRCodeGenerator_${VERSION}_amd64/usr/local/bin
-          mkdir -p build/deb/QRCodeGenerator_${VERSION}_amd64/usr/share/applications
-          mkdir -p build/deb/QRCodeGenerator_${VERSION}_amd64/usr/share/icons/hicolor/256x256/apps
-          cp build/bin/QRCodeGenerator build/deb/QRCodeGenerator_${VERSION}_amd64/usr/local/bin/
-          cp build/appicon/appicon.png build/deb/QRCodeGenerator_${VERSION}_amd64/usr/share/icons/hicolor/256x256/apps/QRCodeGenerator.png
-          cat << EOF > build/deb/QRCodeGenerator_${VERSION}_amd64/usr/share/applications/QRCodeGenerator.desktop
+          mkdir -p build/deb/QRCodeGenerator_${{ env.VERSION }}_amd64/usr/local/bin
+          mkdir -p build/deb/QRCodeGenerator_${{ env.VERSION }}_amd64/usr/share/applications
+          mkdir -p build/deb/QRCodeGenerator_${{ env.VERSION }}_amd64/usr/share/icons/hicolor/256x256/apps
+          cp build/bin/QRCodeGenerator build/deb/QRCodeGenerator_${{ env.VERSION }}_amd64/usr/local/bin/
+          cp build/appicon/appicon.png build/deb/QRCodeGenerator_${{ env.VERSION }}_amd64/usr/share/icons/hicolor/256x256/apps/QRCodeGenerator.png
+          cat << EOF > build/deb/QRCodeGenerator_${{ env.VERSION }}_amd64/usr/share/applications/QRCodeGenerator.desktop
           [Desktop Entry]
           Name=QR Code Generator
           Exec=QRCodeGenerator
@@ -90,17 +95,17 @@ jobs:
           Type=Application
           Categories=Utility;
           EOF
-          mkdir -p build/deb/QRCodeGenerator_${VERSION}_amd64/DEBIAN
-          cat << EOF > build/deb/QRCodeGenerator_${VERSION}_amd64/DEBIAN/control
+          mkdir -p build/deb/QRCodeGenerator_${{ env.VERSION }}_amd64/DEBIAN
+          cat << EOF > build/deb/QRCodeGenerator_${{ env.VERSION }}_amd64/DEBIAN/control
           Package: qrcodegenerator
-          Version: ${VERSION}
+          Version: ${{ env.VERSION }}
           Architecture: amd64
           Maintainer: Your Name <your.email@example.com>
           Description: QR Code Generator app
           Depends: libgtk-3-0, libwebkit2gtk-4.0-37
           EOF
-          dpkg-deb --build build/deb/QRCodeGenerator_${VERSION}_amd64
-          mv build/deb/QRCodeGenerator_${VERSION}_amd64.deb build/bin/
+          dpkg-deb --build build/deb/QRCodeGenerator_${{ env.VERSION }}_amd64
+          mv build/deb/QRCodeGenerator_${{ env.VERSION }}_amd64.deb build/bin/
 
       - name: Install Inno Setup (Windows)
         if: matrix.config.platform == 'windows/amd64'
@@ -110,13 +115,14 @@ jobs:
         if: matrix.config.platform == 'windows/amd64'
         shell: pwsh
         run: |
+          $version = "${{ env.VERSION }}"
           $issContent = @"
           [Setup]
           AppName=QR Code Generator
-          AppVersion=${{ env.VERSION }}
+          AppVersion=$version
           DefaultDirName={pf}\QRCodeGenerator
           OutputDir=build/bin
-          OutputBaseFilename=QRCodeGenerator-${{ env.VERSION }}-setup
+          OutputBaseFilename=QRCodeGenerator-$version-setup
           [Files]
           Source: "build/bin/QRCodeGenerator.exe"; DestDir: "{app}"
           "@
@@ -131,7 +137,7 @@ jobs:
         run: |
           pkgbuild --component build/bin/QRCodeGenerator.app \
                    --install-location /Applications \
-                   --version ${{ env.VERSION }} \
+                   --version "${{ env.VERSION }}" \
                    build/bin/QRCodeGenerator-${{ env.VERSION }}.pkg
 
       - name: Upload installer
